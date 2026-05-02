@@ -1,0 +1,8 @@
+# TODO
+
+## Game
+1. Core game: create board, place mines, expose API to check cell state & to reveal cell.
+2. Reveal neighbour cells recursively, if we reveal the empty cell.
+3. Add ability to add / remove flags
+4. Add moves history
+5. Add save & load game (to inspect how the fs io works)
