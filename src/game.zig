@@ -137,6 +137,27 @@ pub fn deinit(self: *Game, alloc: mem.Allocator) void {
     alloc.free(self.cells);
 }
 
+// remaining can be used to determine amount of mines needed to be revealed
+pub fn remaining(self: *Game) usize {
+    return self.config.mines - self.difused;
+}
+
+// isOver returns true if the game is won, false if not, and null if the game is not over
+pub fn isOver(self: *Game) ?bool {
+    for (0..self.config.width * self.config.height) |i| {
+        // we have a revealed mine cell
+        if (self.state[i] == CellState.REVEALED and self.cells[i] == CellKind.MINE)
+            return false;
+
+        // we have a non-revealed non-mine cell
+        if (self.state[i] != CellState.REVEALED and self.cells[i] != CellKind.MINE)
+            return null;
+    }
+
+    // all cells non-mined cells are revealed
+    return true;
+}
+
 // get state at x,y
 pub fn stateAt(self: *Game, x: usize, y: usize) (error{Overflow}!CellState) {
     const idx = try self.xy2idx(x, y);
@@ -160,11 +181,22 @@ pub fn reveal(self: *Game, x: usize, y: usize) (error{ Overflow, NotHidden }!voi
     revealRec(self, idx);
 }
 
-pub fn flagAt(self: *Game, x: usize, y: usize) (error{ Overflow, Revealed }!void) {
+pub fn flagAt(self: *Game, x: usize, y: usize) (error{ Overflow, Revealed, Diffused }!void) {
     const idx = try self.xy2idx(x, y);
     switch (self.state[idx]) {
-        CellState.FLAGGED => self.state[idx] = CellState.HIDDEN,
-        CellState.HIDDEN => self.state[idx] = CellState.FLAGGED,
+        CellState.FLAGGED => {
+            self.state[idx] = CellState.HIDDEN;
+            self.difused -= 1;
+        },
+
+        CellState.HIDDEN => {
+            if (self.difused == self.config.mines)
+                return error.Diffused;
+
+            self.state[idx] = CellState.FLAGGED;
+            self.difused += 1;
+        },
+
         CellState.REVEALED => return error.Revealed,
     }
 }
