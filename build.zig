@@ -50,6 +50,19 @@ pub fn build(b: *std.Build) void {
     const raygui = raylib_dep.module("raygui"); // raygui module
     const raylib_artifact = raylib_dep.artifact("raylib"); // raylib C library
 
+    const game = b.addModule("game", .{
+        .root_source_file = b.path("src/game.zig"),
+        .target = target,
+    });
+
+    const ui = b.addModule("ui", .{
+        .root_source_file = b.path("src/ui.zig"),
+        .target = target,
+    });
+
+    ui.addImport("raylib", raylib);
+    ui.addImport("game", game);
+
     // Here we define an executable. An executable needs to have a root module
     // which needs to expose a `main` function. While we could add a main function
     // to the module defined above, it's sometimes preferable to split business
@@ -88,12 +101,17 @@ pub fn build(b: *std.Build) void {
                 // can be extremely useful in case of collisions (which can happen
                 // importing modules from different packages).
                 .{ .name = "zig_minesweeper", .module = mod },
+                .{ .name = "ui", .module = ui },
+                .{ .name = "game", .module = game },
             },
         }),
     });
     exe.root_module.linkLibrary(raylib_artifact);
     exe.root_module.addImport("raylib", raylib);
     exe.root_module.addImport("raygui", raygui);
+
+    exe.root_module.addImport("ui", ui);
+    exe.root_module.addImport("game", game);
 
     // This declares intent for the executable to be installed into the
     // install prefix when running `zig build` (i.e. when executing the default

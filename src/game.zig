@@ -5,7 +5,7 @@ const Random = std.Random.DefaultPrng;
 
 const Game = @This();
 
-// public constants
+// !public constants
 pub const Config = struct {
     width: usize,
     height: usize,
@@ -14,7 +14,6 @@ pub const Config = struct {
 };
 
 pub const CellKind = enum(i8) {
-    MINE = -1,
     ZERO = 0,
     ONE = 1,
     TWO = 2,
@@ -24,6 +23,7 @@ pub const CellKind = enum(i8) {
     SIX = 6,
     SEVEN = 7,
     EIGHT = 8,
+    MINE = 9,
 };
 
 pub const CellState = enum {
@@ -32,13 +32,13 @@ pub const CellState = enum {
     FLAGGED,
 };
 
-// internal fields
+// !internal fields
 config: Config,
 cells: []CellKind,
 state: []CellState,
 difused: u32,
 
-// convert 2D coords to internal index
+// !convert 2D coords to internal index
 fn xy2idx(self: *Game, x: usize, y: usize) (error{Overflow}!u32) {
     if (x >= self.config.width or y >= self.config.height)
         return error.Overflow;
@@ -46,40 +46,40 @@ fn xy2idx(self: *Game, x: usize, y: usize) (error{Overflow}!u32) {
     return y * self.config.width + x;
 }
 
-// neighbors iterates over neighbors of the given cell executing given function
+// !neighbors iterates over neighbors of the given cell executing given function
 fn neighbors(self: *Game, cell: usize, func: fn (self: *Game, cell: usize) void) void {
     const x = cell % self.config.width;
     const y = cell / self.config.height;
 
-    // top
+    // !top
     if (y > 0)
         func(self, cell - self.config.width);
 
-    // left
+    // !left
     if (x > 0)
         func(self, cell - 1);
 
-    // bottom
+    // !bottom
     if (y < self.config.height - 1)
         func(self, cell + self.config.width);
 
-    // right
+    // !right
     if (x < self.config.width - 1)
         func(self, cell + 1);
 
-    // topleft
+    // !topleft
     if (x > 0 and y > 0)
         func(self, cell - self.config.width - 1);
 
-    // bottomleft
+    // !bottomleft
     if (x > 0 and y < self.config.height - 1)
         func(self, cell + self.config.width - 1);
 
-    // topright
+    // !topright
     if (x < self.config.width - 1 and y > 0)
         func(self, cell - self.config.width + 1);
 
-    // topright
+    // !bottomright
     if (x < self.config.width - 1 and y < self.config.height - 1)
         func(self, cell + self.config.width + 1);
 }
@@ -95,7 +95,7 @@ fn revealRec(self: *Game, idx: usize) void {
         neighbors(self, idx, revealRec);
 }
 
-// init a new board
+// !init a new board
 pub fn init(alloc: mem.Allocator, cfg: Config) (error{ Overflow, TooManyMines, OutOfMemory }!Game) {
     const total = try math.mul(usize, cfg.height, cfg.width);
     if (total < cfg.mines)
@@ -114,7 +114,7 @@ pub fn init(alloc: mem.Allocator, cfg: Config) (error{ Overflow, TooManyMines, O
         .difused = 0,
     };
 
-    // TODO: place random mines
+    // !TODO: place random mines
     const prng = Random.init(cfg.seed);
     const rand = prng.random();
 
@@ -131,40 +131,40 @@ pub fn init(alloc: mem.Allocator, cfg: Config) (error{ Overflow, TooManyMines, O
     return game;
 }
 
-// deinit the game
+// !deinit the game
 pub fn deinit(self: *Game, alloc: mem.Allocator) void {
     alloc.free(self.state);
     alloc.free(self.cells);
 }
 
-// remaining can be used to determine amount of mines needed to be revealed
+// !remaining can be used to determine amount of mines needed to be revealed
 pub fn remaining(self: *Game) usize {
     return self.config.mines - self.difused;
 }
 
-// isOver returns true if the game is won, false if not, and null if the game is not over
+// !isOver returns true if the game is won, false if not, and null if the game is not over
 pub fn isOver(self: *Game) ?bool {
     for (0..self.config.width * self.config.height) |i| {
-        // we have a revealed mine cell
+        // !we have a revealed mine cell
         if (self.state[i] == CellState.REVEALED and self.cells[i] == CellKind.MINE)
             return false;
 
-        // we have a non-revealed non-mine cell
+        // !we have a non-revealed non-mine cell
         if (self.state[i] != CellState.REVEALED and self.cells[i] != CellKind.MINE)
             return null;
     }
 
-    // all cells non-mined cells are revealed
+    // !all cells non-mined cells are revealed
     return true;
 }
 
-// get state at x,y
+// !get state at x,y
 pub fn stateAt(self: *Game, x: usize, y: usize) (error{Overflow}!CellState) {
     const idx = try self.xy2idx(x, y);
     return self.state[idx];
 }
 
-// get kind at x,y if cell is revealed
+// !get kind at x,y if cell is revealed
 pub fn kindAt(self: *Game, x: usize, y: usize) (error{ Overflow, Hidden }!CellState) {
     const idx = try self.xy2idx(x, y);
     if (self.state[idx] != CellState.REVEALED)
@@ -173,7 +173,7 @@ pub fn kindAt(self: *Game, x: usize, y: usize) (error{ Overflow, Hidden }!CellSt
     return self.cells[idx];
 }
 
-// reveal a cell at x,y
+// !reveal a cell at x,y
 pub fn reveal(self: *Game, x: usize, y: usize) (error{ Overflow, NotHidden }!void) {
     const idx = try self.xy2idx(x, y);
     if (self.state[idx] != CellState.HIDDEN)
