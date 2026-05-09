@@ -4,6 +4,9 @@ const rl = @import("raylib");
 const ui = @import("ui");
 const game = @import("game");
 
+const Assets = @import("assets.zig");
+const Asset = Assets.Asset;
+
 const zig_minesweeper = @import("zig_minesweeper");
 
 pub fn main(init: std.process.Init) !void {
@@ -72,22 +75,11 @@ pub fn main(init: std.process.Init) !void {
     //     // defer rl.unloadTexture(texture); // Unload the texture when the program exits
     // }
 
-    var img: rl.Image = try rl.loadImage("./assets/spritesheet.png");
-    defer rl.unloadImage(img);
+    const assets = try Assets.init();
+    defer assets.deinit();
 
-    rl.imageCrop(&img, (rl.Rectangle){
-        .x = 0,
-        .y = 0,
-        .width = 8,
-        .height = 8,
-    });
-
-    const oneDigitSize = 8;
-
-    // Resize flipped-cropped image
-    rl.imageResize(&img, oneDigitSize * 8, oneDigitSize * 8);
-    const texture: rl.Texture2D = try rl.loadTextureFromImage(img);
-    defer rl.unloadTexture(texture); // Unload the texture when the program exits
+    var i: usize = 0;
+    var j: usize = 0;
 
     // Main game loop
     while (!rl.windowShouldClose()) { // Detect window close button or ESC key
@@ -95,6 +87,11 @@ pub fn main(init: std.process.Init) !void {
         //----------------------------------------------------------------------------------
         // TODO: Update your variables here
         //----------------------------------------------------------------------------------
+        j += 1;
+        if (j > 60) {
+            j = 0;
+            i = (i + 1) % 13;
+        }
 
         // Draw
         //----------------------------------------------------------------------------------
@@ -113,7 +110,7 @@ pub fn main(init: std.process.Init) !void {
         }
 
         rl.clearBackground(.white);
-        try ui.drawGrid(texture, screenWidth, screenHeight); // Pass the preloaded texture
+        try ui.drawGrid(assets.textures[i], screenWidth, screenHeight); // Pass the preloaded texture
 
         // rl.drawText("Congrats! You created your first window!", 190, 200, 20, .light_gray);
         //----------------------------------------------------------------------------------
