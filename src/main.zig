@@ -6,6 +6,7 @@ const game = @import("game");
 
 const Assets = @import("assets.zig");
 const Asset = Assets.Asset;
+const Game = @import("game");
 
 const zig_minesweeper = @import("zig_minesweeper");
 
@@ -75,11 +76,17 @@ pub fn main(init: std.process.Init) !void {
     //     // defer rl.unloadTexture(texture); // Unload the texture when the program exits
     // }
 
+    var g: Game = try .init(init.gpa, .{
+        .width = @as(usize, screenWidth / 64),
+        .height = @as(usize, screenHeight / 64),
+        .mines = 22,
+        .seed = 22,
+    });
+    g.difused = 0;
+    defer g.deinit(init.gpa);
+
     const assets = try Assets.init();
     defer assets.deinit();
-
-    var i: usize = 0;
-    var j: usize = 0;
 
     // Main game loop
     while (!rl.windowShouldClose()) { // Detect window close button or ESC key
@@ -87,11 +94,6 @@ pub fn main(init: std.process.Init) !void {
         //----------------------------------------------------------------------------------
         // TODO: Update your variables here
         //----------------------------------------------------------------------------------
-        j += 1;
-        if (j > 60) {
-            j = 0;
-            i = (i + 1) % 13;
-        }
 
         // Draw
         //----------------------------------------------------------------------------------
@@ -110,7 +112,28 @@ pub fn main(init: std.process.Init) !void {
         }
 
         rl.clearBackground(.white);
-        try ui.drawGrid(assets.textures[i], screenWidth, screenHeight); // Pass the preloaded texture
+
+        for (0..g.config.width) |x| {
+            for (0..g.config.height) |y| {
+                const texture = switch (try g.stateAt(x, y)) {
+                    .FLAGGED => assets.resolve(Asset.FLAGGED),
+                    .HIDDEN => assets.resolve(Asset.HIDDEN),
+                    .REVEALED => switch (try g.kindAt(x, y)) {
+                        .ZERO => assets.resolve(Asset.ZERO),
+                        .ONE => assets.resolve(Asset.ONE),
+                        .TWO => assets.resolve(Asset.TWO),
+                        .THREE => assets.resolve(Asset.THREE),
+                        .FOUR => assets.resolve(Asset.FOUR),
+                        .FIVE => assets.resolve(Asset.FIVE),
+                        .SIX => assets.resolve(Asset.SIX),
+                        .SEVEN => assets.resolve(Asset.SEVEN),
+                        .EIGHT => assets.resolve(Asset.EIGHT),
+                        .MINE => assets.resolve(Asset.MINED),
+                    },
+                };
+                rl.drawTexture(texture, @as(i32, @intCast(x * 64)), @as(i32, @intCast(y * 64)), .white);
+            }
+        }
 
         // rl.drawText("Congrats! You created your first window!", 190, 200, 20, .light_gray);
         //----------------------------------------------------------------------------------

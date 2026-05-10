@@ -39,7 +39,7 @@ state: []CellState,
 difused: u32,
 
 // !convert 2D coords to internal index
-fn xy2idx(self: *Game, x: usize, y: usize) (error{Overflow}!u32) {
+fn xy2idx(self: *Game, x: usize, y: usize) (error{Overflow}!usize) {
     if (x >= self.config.width or y >= self.config.height)
         return error.Overflow;
 
@@ -49,7 +49,7 @@ fn xy2idx(self: *Game, x: usize, y: usize) (error{Overflow}!u32) {
 // !neighbors iterates over neighbors of the given cell executing given function
 fn neighbors(self: *Game, cell: usize, func: fn (self: *Game, cell: usize) void) void {
     const x = cell % self.config.width;
-    const y = cell / self.config.height;
+    const y = cell / self.config.width;
 
     // !top
     if (y > 0)
@@ -102,7 +102,7 @@ pub fn init(alloc: mem.Allocator, cfg: Config) (error{ Overflow, TooManyMines, O
         return error.TooManyMines;
 
     var state = try alloc.alloc(CellState, total);
-    for (0..total) |i| state[i] = CellState.HIDDEN;
+    for (0..total) |i| state[i] = CellState.REVEALED;
 
     var cells = try alloc.alloc(CellKind, total);
     for (0..total) |i| cells[i] = CellKind.ZERO;
@@ -114,7 +114,6 @@ pub fn init(alloc: mem.Allocator, cfg: Config) (error{ Overflow, TooManyMines, O
         .difused = 0,
     };
 
-    // !TODO: place random mines
     var prng = Random.init(cfg.seed);
     const rand = prng.random();
 
@@ -124,8 +123,8 @@ pub fn init(alloc: mem.Allocator, cfg: Config) (error{ Overflow, TooManyMines, O
 
     rand.shuffle(usize, mines);
     for (0..cfg.mines) |cell| {
-        cells[cell] = CellKind.MINE;
-        neighbors(&game, cell, incrKind);
+        cells[mines[cell]] = CellKind.MINE;
+        neighbors(&game, mines[cell], incrKind);
     }
 
     return game;
@@ -165,7 +164,7 @@ pub fn stateAt(self: *Game, x: usize, y: usize) (error{Overflow}!CellState) {
 }
 
 // !get kind at x,y if cell is revealed
-pub fn kindAt(self: *Game, x: usize, y: usize) (error{ Overflow, Hidden }!CellState) {
+pub fn kindAt(self: *Game, x: usize, y: usize) (error{ Overflow, Hidden }!CellKind) {
     const idx = try self.xy2idx(x, y);
     if (self.state[idx] != CellState.REVEALED)
         return error.Hidden;
