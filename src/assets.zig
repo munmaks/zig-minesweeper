@@ -27,25 +27,27 @@ pub fn resolve(self: *const Assets, asset: Asset) rl.Texture2D {
     };
 }
 
-pub fn init() rl.RaylibError!Assets {
-    const spritesheet = rl.loadImageFromMemory(".png", file) catch unreachable;
-    defer spritesheet.unload();
+fn textureFromRec(rec: rl.Rectangle) rl.RaylibError!rl.Texture {
+    var image = try rl.loadImageFromMemory(".png", file);
+    defer image.unload();
+    image.crop(rec);
+    image.resizeNN(TILE_SIZE * 8, TILE_SIZE * 8);
+    return try rl.loadTextureFromImage(image);
+}
 
+pub fn init() rl.RaylibError!Assets {
     var textures: [13]rl.Texture2D = undefined;
     for (0..4) |y| {
         for (0..4) |x| {
             if (y * 4 + x > 12)
                 break;
 
-            const rec: rl.Rectangle = .{
+            textures[y * 4 + x] = try textureFromRec(.{
                 .x = @floatFromInt(TILE_SIZE * x),
                 .y = @floatFromInt(TILE_SIZE * y),
                 .width = @floatFromInt(TILE_SIZE),
                 .height = @floatFromInt(TILE_SIZE),
-            };
-            var cropped = spritesheet.copyRec(rec);
-            cropped.resizeNN(TILE_SIZE * 8, TILE_SIZE * 8);
-            textures[y * 4 + x] = rl.loadTextureFromImage(cropped) catch unreachable;
+            });
         }
     }
     return .{ .textures = textures };
