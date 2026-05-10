@@ -86,7 +86,7 @@ fn neighbors(self: *Game, cell: usize, func: fn (self: *Game, cell: usize) void)
 
 fn incrKind(self: *Game, idx: usize) void {
     if (self.cells[idx] != CellKind.MINE)
-        self.cells[idx] += 1;
+        self.cells[idx] = @enumFromInt(@intFromEnum(self.cells[idx]) + 1);
 }
 
 fn revealRec(self: *Game, idx: usize) void {
@@ -107,7 +107,7 @@ pub fn init(alloc: mem.Allocator, cfg: Config) (error{ Overflow, TooManyMines, O
     var cells = try alloc.alloc(CellKind, total);
     for (0..total) |i| cells[i] = CellKind.ZERO;
 
-    const game = Game{
+    var game = Game{
         .cells = cells,
         .config = cfg,
         .state = state,
@@ -115,7 +115,7 @@ pub fn init(alloc: mem.Allocator, cfg: Config) (error{ Overflow, TooManyMines, O
     };
 
     // !TODO: place random mines
-    const prng = Random.init(cfg.seed);
+    var prng = Random.init(cfg.seed);
     const rand = prng.random();
 
     var mines = try alloc.alloc(usize, total);
@@ -123,9 +123,9 @@ pub fn init(alloc: mem.Allocator, cfg: Config) (error{ Overflow, TooManyMines, O
     for (0..total) |i| mines[i] = i;
 
     rand.shuffle(usize, mines);
-    for (0..mines) |cell| {
+    for (0..cfg.mines) |cell| {
         cells[cell] = CellKind.MINE;
-        neighbors(game, cell, incrKind);
+        neighbors(&game, cell, incrKind);
     }
 
     return game;
