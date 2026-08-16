@@ -8,9 +8,7 @@ pub const Logic = @This();
 
 // !public constants
 pub const Config = struct {
-    width: usize,
-    height: usize,
-    // board: rl.Rectangle,
+    board: rl.Rectangle, // ! game board rectangle
     mines: usize,
     seed: u64,
 };
@@ -44,9 +42,17 @@ gameOver: bool,
 flagged: usize,
 
 // !init a new board
-pub fn init(alloc: mem.Allocator, cfg: Config) (error{ Overflow, TooManyMines, OutOfMemory }!Logic) {
-    const total = try math.mul(usize, cfg.height, cfg.width);
-    if (total < cfg.mines)
+pub fn init(alloc: mem.Allocator, config: Config) (error{ Overflow, TooManyMines, OutOfMemory }!Logic) {
+    const width: usize = @intFromFloat(config.board.width);
+    const height: usize = @intFromFloat(config.board.height);
+
+    const total = try math.mul(
+        usize,
+        height,
+        width,
+    );
+
+    if (total < config.mines)
         return error.TooManyMines;
 
     var state = try alloc.alloc(CellState, total);
@@ -57,14 +63,14 @@ pub fn init(alloc: mem.Allocator, cfg: Config) (error{ Overflow, TooManyMines, O
 
     var logic: Logic = .{
         .cells = cells,
-        .config = cfg,
+        .config = config,
         .state = state,
         .diffused = 0,
         .gameOver = false,
         .flagged = 0,
     };
 
-    var prng = Random.init(cfg.seed);
+    var prng = Random.init(config.seed);
     const rand = prng.random();
 
     var mines = try alloc.alloc(usize, total);
@@ -72,7 +78,7 @@ pub fn init(alloc: mem.Allocator, cfg: Config) (error{ Overflow, TooManyMines, O
     for (0..total) |i| mines[i] = i;
 
     rand.shuffle(usize, mines);
-    for (0..cfg.mines) |cell| {
+    for (0..config.mines) |cell| {
         cells[mines[cell]] = .MINE;
         neighbors(&logic, mines[cell], incrKind);
     }
@@ -82,7 +88,10 @@ pub fn init(alloc: mem.Allocator, cfg: Config) (error{ Overflow, TooManyMines, O
 
 pub fn revealedCount(self: *Logic) usize {
     var count: usize = 0;
-    for (0..self.config.width * self.config.height) |i| {
+    const weidth: usize = @intFromFloat(self.config.board.width);
+    const height: usize = @intFromFloat(self.config.board.height);
+    const total = weidth * height;
+    for (0..total) |i| {
         if (self.state[i] == .REVEALED and self.cells[i] != .MINE)
             count += 1;
     }
@@ -91,28 +100,32 @@ pub fn revealedCount(self: *Logic) usize {
 
 // !convert 2D coords to internal index
 fn xy2idx(self: *Logic, x: usize, y: usize) (error{Overflow}!usize) {
-    if (x >= self.config.width or
-        y >= self.config.height)
+    const width: usize = @intFromFloat(self.config.board.width);
+    const height: usize = @intFromFloat(self.config.board.height);
+    if (x >= width or
+        y >= height)
         return error.Overflow;
 
-    return y * self.config.width + x;
+    return y * width + x;
 }
 
 fn toIndex(self: *Logic, vec: rl.Vector2) (error{Overflow}!usize) {
     const x: usize = @intFromFloat(vec.x);
     const y: usize = @intFromFloat(vec.y);
-    if (x < 0 or x >= self.config.width or
-        y < 0 or y >= self.config.height)
+    const width: usize = @intFromFloat(self.config.board.width);
+    const height: usize = @intFromFloat(self.config.board.height);
+    if (x < 0 or x >= width or
+        y < 0 or y >= height)
     {
         return error.Overflow;
     }
-    return y * self.config.width + x;
+    return y * width + x;
 }
 
 // !neighbors iterates over neighbors of the given cell executing given function
 fn neighbors(self: *Logic, cell: usize, func: fn (*Logic, usize) void) void {
-    const width = self.config.width;
-    const height = self.config.height;
+    const width: usize = @intFromFloat(self.config.board.width);
+    const height: usize = @intFromFloat(self.config.board.height);
 
     const x: isize = @intCast(cell % width);
     const y: isize = @intCast(cell / width);
@@ -190,7 +203,10 @@ pub fn isOver(self: *Logic) ?bool {
     if (self.gameOver) {
         return false;
     }
-    for (0..self.config.width * self.config.height) |i| {
+    const width: usize = @intFromFloat(self.config.board.width);
+    const height: usize = @intFromFloat(self.config.board.height);
+    const total: usize = width * height;
+    for (0..total) |i| {
         // !we have a revealed mine cell
         if (self.state[i] == .REVEALED and self.cells[i] == .MINE)
             return false;
@@ -262,8 +278,11 @@ pub fn reveal(self: *Logic, x: usize, y: usize) (error{Overflow}!void) {
 }
 
 fn revealAll(self: *Logic) void {
-    for (0..self.config.width * self.config.height) |i| {
-        if (self.state[i] == .HIDDEN)
+    const width: usize = @intFromFloat(self.config.board.width);
+    const height: usize = @intFromFloat(self.config.board.height);
+    for (0..width * height) |i| {
+        if (self.state[i] == .HIDDEN and
+            (self.cells[i] == .MINE or self.cells[i] == .EXPLODED))
             self.state[i] = .REVEALED;
     }
 }

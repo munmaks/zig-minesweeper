@@ -28,8 +28,8 @@ pub fn main(init: std.process.Init) !void {
 
     // Initialization
     //--------------------------------------------------------------------------------------
-    const screenWidth: usize = 1024;
-    const screenHeight: usize = 720;
+    const screenWidth = 1024;
+    const screenHeight = 720;
 
     rl.initWindow(screenWidth, screenHeight, "raylib-zig [core] example - basic window");
     defer rl.closeWindow(); // Close window and OpenGL context
@@ -48,8 +48,14 @@ pub fn main(init: std.process.Init) !void {
     const numMines = 30;
 
     var game = try logic.Logic.init(gpa, .{
-        .width = screenWidth / 64,
-        .height = screenHeight / 64,
+        .board = .{
+            .x = 0,
+            .y = 0,
+            .width = screenWidth / 64,
+            .height = screenHeight / 64,
+        },
+        // .width = screenWidth / 64,
+        // .height = screenHeight / 64,
         .mines = numMines,
         .seed = random.int(u64), // random number
     });

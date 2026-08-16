@@ -55,8 +55,10 @@ fn resolveTexture(assets: Assets, kind: Logic.CellKind) rl.Texture2D {
 }
 
 pub fn drawGrid(game: *Logic, assets: Assets) !void {
-    for (0..game.config.width) |x| {
-        for (0..game.config.height) |y| {
+    const width: usize = @intFromFloat(game.config.board.width);
+    const height: usize = @intFromFloat(game.config.board.height);
+    for (0..width) |x| {
+        for (0..height) |y| {
             const texture =
                 switch (try game.stateAt(x, y)) {
                     .FLAGGED => assets.resolve(.FLAGGED),
