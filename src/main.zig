@@ -28,8 +28,8 @@ pub fn main(init: std.process.Init) !void {
 
     // Initialization
     //--------------------------------------------------------------------------------------
-    const screenWidth = 1024;
-    const screenHeight = 720;
+    const screenWidth: usize = 1024;
+    const screenHeight: usize = 720;
 
     rl.initWindow(screenWidth, screenHeight, "raylib-zig [core] example - basic window");
     defer rl.closeWindow(); // Close window and OpenGL context
@@ -48,8 +48,8 @@ pub fn main(init: std.process.Init) !void {
     const numMines = 30;
 
     var game = try logic.Logic.init(gpa, .{
-        .width = @as(usize, screenWidth / 64),
-        .height = @as(usize, screenHeight / 64),
+        .width = screenWidth / 64,
+        .height = screenHeight / 64,
         .mines = numMines,
         .seed = random.int(u64), // random number
     });
@@ -68,15 +68,18 @@ pub fn main(init: std.process.Init) !void {
 
         if (game.isOver()) |over| {
             if (over) {
-                std.debug.print("You Win!\n", .{});
+                try stdout_writer.print("You Win!\n", .{});
             } else {
-                std.debug.print("You Lose!\n", .{});
+                try stdout_writer.print("You Lose!\n", .{});
             }
-            std.debug.print("Diffused: <{}>, total: <{}>\nrevealed: <{}>\n", .{
+            try stdout_writer.print("Diffused: <{}>, total: <{}>\nrevealed: <{}>\n", .{
                 game.diffused,
                 game.config.mines,
                 game.revealedCount(),
             });
+
+            // ! [DEBUG] wait 5
+            rl.waitTime(5);
             break;
         }
 
@@ -108,4 +111,6 @@ pub fn main(init: std.process.Init) !void {
         // rl.drawText("Congrats! You created your first window!", 190, 200, 20, .light_gray);
         //----------------------------------------------------------------------------------
     }
+
+    try stdout_writer.flush();
 }

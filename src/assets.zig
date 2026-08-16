@@ -2,10 +2,11 @@ const rl = @import("raylib");
 
 pub const Assets = @This();
 
-const file = @embedFile("spritesheet.png");
+const spritesheet = @embedFile("spritesheet.png");
 const TILE_SIZE = 8;
+const MAX_TEXTURES = 13;
 
-textures: [13]rl.Texture2D,
+textures: [MAX_TEXTURES]rl.Texture2D,
 
 pub const Asset = enum(u8) {
     ONE = 0,
@@ -34,7 +35,7 @@ pub fn resolve(self: *const Assets, asset: Asset) rl.Texture2D {
 }
 
 fn textureFromRec(rec: rl.Rectangle) rl.RaylibError!rl.Texture {
-    var image = try rl.loadImageFromMemory(".png", file);
+    var image = try rl.loadImageFromMemory(".png", spritesheet);
     defer image.unload();
     image.crop(rec);
     image.resizeNN(TILE_SIZE * TILE_SIZE, TILE_SIZE * TILE_SIZE);
@@ -42,19 +43,16 @@ fn textureFromRec(rec: rl.Rectangle) rl.RaylibError!rl.Texture {
 }
 
 pub fn init() rl.RaylibError!Assets {
-    var textures: [13]rl.Texture2D = undefined;
-    for (0..4) |y| {
-        for (0..4) |x| {
-            if (y * 4 + x > 12)
-                break;
-
-            textures[y * 4 + x] = try textureFromRec(.{
-                .x = @floatFromInt(TILE_SIZE * x),
-                .y = @floatFromInt(TILE_SIZE * y),
-                .width = @floatFromInt(TILE_SIZE),
-                .height = @floatFromInt(TILE_SIZE),
-            });
-        }
+    var textures: [MAX_TEXTURES]rl.Texture2D = undefined;
+    for (0..MAX_TEXTURES) |i| {
+        const x = i % 4;
+        const y = i / 4;
+        textures[i] = try textureFromRec(.{
+            .x = @floatFromInt(x * TILE_SIZE),
+            .y = @floatFromInt(y * TILE_SIZE),
+            .width = @floatFromInt(TILE_SIZE),
+            .height = @floatFromInt(TILE_SIZE),
+        });
     }
     return .{ .textures = textures };
 }

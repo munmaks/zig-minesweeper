@@ -10,6 +10,7 @@ pub const Logic = @This();
 pub const Config = struct {
     width: usize,
     height: usize,
+    // board: rl.Rectangle,
     mines: usize,
     seed: u64,
 };
@@ -25,6 +26,7 @@ pub const CellKind = enum(u8) {
     SEVEN = 7,
     EIGHT = 8,
     MINE = 9,
+    EXPLODED = 10,
 };
 
 pub const CellState = enum {
@@ -89,7 +91,8 @@ pub fn revealedCount(self: *Logic) usize {
 
 // !convert 2D coords to internal index
 fn xy2idx(self: *Logic, x: usize, y: usize) (error{Overflow}!usize) {
-    if (x >= self.config.width or y >= self.config.height)
+    if (x >= self.config.width or
+        y >= self.config.height)
         return error.Overflow;
 
     return y * self.config.width + x;
@@ -107,41 +110,41 @@ fn toIndex(self: *Logic, vec: rl.Vector2) (error{Overflow}!usize) {
 }
 
 // !neighbors iterates over neighbors of the given cell executing given function
-fn neighbors(self: *Logic, cell: usize, func: fn (self: *Logic, cell: usize) void) void {
-    const x = cell % self.config.width;
-    const y = cell / self.config.width;
+fn neighbors(self: *Logic, cell: usize, func: fn (*Logic, usize) void) void {
+    const width = self.config.width;
+    const height = self.config.height;
 
-    // !top
-    if (y > 0)
-        func(self, cell - self.config.width);
+    const x: isize = @intCast(cell % width);
+    const y: isize = @intCast(cell / width);
 
-    // !left
-    if (x > 0)
-        func(self, cell - 1);
+    const directions: [16]isize = .{
+        -1, -1, // !top-left
+        0, -1, // !top
+        1, -1, // !top-right
+        -1, 0, // !left
+        1, 0, // !right
+        -1, 1, // !bottom-left
+        0, 1, // !bottom
+        1, 1, // !bottom-right
+    };
 
-    // !bottom
-    if (y < self.config.height - 1)
-        func(self, cell + self.config.width);
+    var i: usize = 0;
+    while (i < directions.len) : (i += 2) {
+        const nx = x + directions[i];
+        const ny = y + directions[i + 1];
 
-    // !right
-    if (x < self.config.width - 1)
-        func(self, cell + 1);
+        if (nx < 0 or nx >= width or
+            ny < 0 or ny >= height)
+        {
+            continue;
+        }
 
-    // !topleft
-    if (x > 0 and y > 0)
-        func(self, cell - self.config.width - 1);
+        const neighbor =
+            @as(usize, @intCast(ny)) * width +
+            @as(usize, @intCast(nx));
 
-    // !bottomleft
-    if (x > 0 and y < self.config.height - 1)
-        func(self, cell + self.config.width - 1);
-
-    // !topright
-    if (x < self.config.width - 1 and y > 0)
-        func(self, cell - self.config.width + 1);
-
-    // !bottomright
-    if (x < self.config.width - 1 and y < self.config.height - 1)
-        func(self, cell + self.config.width + 1);
+        func(self, neighbor);
+    }
 }
 
 fn incrKind(self: *Logic, idx: usize) void {
@@ -150,7 +153,9 @@ fn incrKind(self: *Logic, idx: usize) void {
 }
 
 fn revealRec(self: *Logic, idx: usize) void {
-    if (self.state[idx] == .REVEALED) return;
+    if (self.state[idx] == .REVEALED)
+        return;
+
     self.state[idx] = .REVEALED;
     if (self.cells[idx] == .ZERO)
         neighbors(self, idx, revealRec);
@@ -158,8 +163,12 @@ fn revealRec(self: *Logic, idx: usize) void {
 
 fn revealRecNum(self: *Logic, idx: usize) void {
     if (self.state[idx] == .REVEALED or
-        self.state[idx] == .FLAGGED) return;
-    if (self.cells[idx] == .MINE) return;
+        self.state[idx] == .FLAGGED)
+        return;
+
+    if (self.cells[idx] == .MINE)
+        return;
+
     self.state[idx] = .REVEALED;
     if (self.cells[idx] == .ZERO)
         neighbors(self, idx, revealRec);
@@ -178,8 +187,9 @@ pub fn remaining(self: *Logic) usize {
 
 // !isOver returns true if the game is won, false if not, and null if the game is not over
 pub fn isOver(self: *Logic) ?bool {
-    if (self.gameOver)
+    if (self.gameOver) {
         return false;
+    }
     for (0..self.config.width * self.config.height) |i| {
         // !we have a revealed mine cell
         if (self.state[i] == .REVEALED and self.cells[i] == .MINE)
@@ -207,12 +217,8 @@ pub fn stateAt(self: *Logic, x: usize, y: usize) (error{Overflow}!CellState) {
 
 // !to test this function:
 // !get kind at x,y if cell is revealed
-pub fn kindAt(self: *Logic, x: usize, y: usize) (error{ Overflow, Hidden }!CellKind) {
-    const idx = try self.xy2idx(x, y);
-    if (self.state[idx] != .REVEALED)
-        return error.Hidden;
-
-    return self.cells[idx];
+pub fn kindAt(self: *Logic, x: usize, y: usize) (error{Overflow}!CellKind) {
+    return self.cells[try self.xy2idx(x, y)];
 }
 
 fn countFlagged(self: *Logic, idx: usize) void {
@@ -230,9 +236,7 @@ pub fn reveal(self: *Logic, x: usize, y: usize) (error{Overflow}!void) {
 
     // ! if it's revealed and in neighbors flag is equal to the number
     // ! beneath the cell, we can reveal
-    if (self.state[idx] == .REVEALED and
-        self.cells[idx] != .MINE)
-    {
+    if (self.state[idx] == .REVEALED) {
         self.flagged = 0;
         neighbors(self, idx, countFlagged);
         const kindNumber: u8 = @intFromEnum(self.cells[idx]);
@@ -244,14 +248,24 @@ pub fn reveal(self: *Logic, x: usize, y: usize) (error{Overflow}!void) {
     }
 
     if (self.cells[idx] == .MINE) {
-        self.state[idx] = .REVEALED;
+        self.cells[idx] = .EXPLODED;
         self.gameOver = true;
+        self.revealAll();
         return;
     }
 
-    if (self.state[idx] == .FLAGGED)
+    if (self.state[idx] == .FLAGGED) {
         return;
+    }
+
     revealRec(self, idx);
+}
+
+fn revealAll(self: *Logic) void {
+    for (0..self.config.width * self.config.height) |i| {
+        if (self.state[i] == .HIDDEN)
+            self.state[i] = .REVEALED;
+    }
 }
 
 pub fn flagAt(self: *Logic, x: usize, y: usize) (error{Overflow}!void) {
@@ -265,6 +279,6 @@ pub fn flagAt(self: *Logic, x: usize, y: usize) (error{Overflow}!void) {
             self.state[idx] = .FLAGGED;
             self.diffused += 1;
         },
-        .REVEALED => {}, //return error.Revealed,
+        .REVEALED => {},
     }
 }

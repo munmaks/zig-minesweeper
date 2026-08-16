@@ -47,6 +47,7 @@ fn resolveTexture(assets: Assets, kind: Logic.CellKind) rl.Texture2D {
         .SEVEN => assets.resolve(.SEVEN),
         .EIGHT => assets.resolve(.EIGHT),
         .MINE => assets.resolve(.MINED),
+        .EXPLODED => assets.resolve(.EXPLODED),
     };
     // const intKind = @intFromEnum(kind);
     // const asset: Asset = @enumFromInt(intKind);
