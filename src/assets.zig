@@ -1,37 +1,43 @@
 const rl = @import("raylib");
 
-const Assets = @This();
+pub const Assets = @This();
 
 const file = @embedFile("spritesheet.png");
 const TILE_SIZE = 8;
 
 textures: [13]rl.Texture2D,
 
-pub const Asset = enum { ONE, TWO, THREE, FOUR, FIVE, SIX, SEVEN, EIGHT, EXPLODED, MINED, FLAGGED, HIDDEN, ZERO };
+pub const Asset = enum(u8) {
+    ONE = 0,
+    TWO = 1,
+    THREE = 2,
+    FOUR = 3,
+    FIVE = 4,
+    SIX = 5,
+    SEVEN = 6,
+    EIGHT = 7,
+    EXPLODED = 8,
+    MINED = 9,
+    FLAGGED = 10,
+    HIDDEN = 11,
+    ZERO = 12,
+};
 
 pub fn resolve(self: *const Assets, asset: Asset) rl.Texture2D {
-    return switch (asset) {
-        .ONE => self.textures[0],
-        .TWO => self.textures[1],
-        .THREE => self.textures[2],
-        .FOUR => self.textures[3],
-        .FIVE => self.textures[4],
-        .SIX => self.textures[5],
-        .SEVEN => self.textures[6],
-        .EIGHT => self.textures[7],
-        .EXPLODED => self.textures[8],
-        .MINED => self.textures[9],
-        .FLAGGED => self.textures[10],
-        .HIDDEN => self.textures[11],
-        .ZERO => self.textures[12],
-    };
+    // return switch (asset) {
+    //     .ONE => self.textures[0],
+    //     .TWO => self.textures[1],
+    //     ...
+    //     .ZERO => self.textures[12],
+    // };
+    return self.textures[@as(usize, @intFromEnum(asset))];
 }
 
 fn textureFromRec(rec: rl.Rectangle) rl.RaylibError!rl.Texture {
     var image = try rl.loadImageFromMemory(".png", file);
     defer image.unload();
     image.crop(rec);
-    image.resizeNN(TILE_SIZE * 8, TILE_SIZE * 8);
+    image.resizeNN(TILE_SIZE * TILE_SIZE, TILE_SIZE * TILE_SIZE);
     return try rl.loadTextureFromImage(image);
 }
 

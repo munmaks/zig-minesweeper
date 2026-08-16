@@ -1,7 +1,9 @@
 const std = @import("std");
 
 const rl = @import("raylib");
-const game = @import("game");
+const Logic = @import("logic");
+const Assets = @import("assets");
+const Asset = Assets.Asset;
 
 const cell_size: usize = 64;
 const fileName = "./assets/spritesheet.png"; // Use absolute path for debugging
@@ -20,19 +22,52 @@ const imgColor: rl.Color = .{
     .a = 255,
 };
 
-pub fn drawGrid(texture: rl.Texture2D, screenWidth: usize, screenHeight: usize) !void {
-    // _ = screenHeight;
-    // _ = screenWidth;
+pub fn showMousePosition(mousePos: rl.Vector2, stdout_writer: *std.Io.Writer) !void {
+    const x: usize = @intFromFloat(mousePos.x);
+    const y: usize = @intFromFloat(mousePos.y);
+    const cellX = @divTrunc(x, cell_size);
+    const cellY = @divTrunc(y, cell_size);
+    // Print the mouse position to stdout
+    try stdout_writer.print(
+        "Cell Position: ({}, {})\n",
+        .{ cellX, cellY },
+    );
+    try stdout_writer.flush();
+}
 
-    // rl.drawTexture(texture, 0, 0, .white);
+fn resolveTexture(assets: Assets, kind: Logic.CellKind) rl.Texture2D {
+    return switch (kind) {
+        .ZERO => assets.resolve(.ZERO),
+        .ONE => assets.resolve(.ONE),
+        .TWO => assets.resolve(.TWO),
+        .THREE => assets.resolve(.THREE),
+        .FOUR => assets.resolve(.FOUR),
+        .FIVE => assets.resolve(.FIVE),
+        .SIX => assets.resolve(.SIX),
+        .SEVEN => assets.resolve(.SEVEN),
+        .EIGHT => assets.resolve(.EIGHT),
+        .MINE => assets.resolve(.MINED),
+    };
+    // const intKind = @intFromEnum(kind);
+    // const asset: Asset = @enumFromInt(intKind);
+    // return assets.resolve(asset);
+}
 
-    for (0..screenHeight / cell_size) |i| {
-        for (0..screenWidth / cell_size) |j| {
-            // _ = i;
-            // _ = j;
-            const x: i32 = @intCast(j * cell_size);
-            const y: i32 = @intCast(i * cell_size);
-            rl.drawTexture(texture, x, y, .white);
+pub fn drawGrid(game: *Logic, assets: Assets) !void {
+    for (0..game.config.width) |x| {
+        for (0..game.config.height) |y| {
+            const texture =
+                switch (try game.stateAt(x, y)) {
+                    .FLAGGED => assets.resolve(.FLAGGED),
+                    .HIDDEN => assets.resolve(.HIDDEN),
+                    .REVEALED => resolveTexture(assets, try game.kindAt(x, y)),
+                };
+            rl.drawTexture(
+                texture,
+                @intCast(x * cell_size),
+                @intCast(y * cell_size),
+                .white,
+            );
         }
     }
 }

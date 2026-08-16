@@ -50,18 +50,11 @@ pub fn build(b: *std.Build) void {
     const raygui = raylib_dep.module("raygui"); // raygui module
     const raylib_artifact = raylib_dep.artifact("raylib"); // raylib C library
 
-    const game = b.addModule("game", .{
-        .root_source_file = b.path("src/game.zig"),
+    const logic = b.addModule("logic", .{
+        .root_source_file = b.path("src/logic.zig"),
         .target = target,
     });
-
-    const ui = b.addModule("ui", .{
-        .root_source_file = b.path("src/ui.zig"),
-        .target = target,
-    });
-
-    ui.addImport("raylib", raylib);
-    ui.addImport("game", game);
+    logic.addImport("raylib", raylib);
 
     const assets = b.addModule("assets", .{
         .root_source_file = b.path("src/assets.zig"),
@@ -69,6 +62,15 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
     assets.addImport("raylib", raylib);
+
+    const ui = b.addModule("ui", .{
+        .root_source_file = b.path("src/ui.zig"),
+        .target = target,
+    });
+
+    ui.addImport("raylib", raylib);
+    ui.addImport("logic", logic);
+    ui.addImport("assets", assets);
 
     // Here we define an executable. An executable needs to have a root module
     // which needs to expose a `main` function. While we could add a main function
@@ -109,7 +111,7 @@ pub fn build(b: *std.Build) void {
                 // importing modules from different packages).
                 .{ .name = "zig_minesweeper", .module = mod },
                 .{ .name = "ui", .module = ui },
-                .{ .name = "game", .module = game },
+                .{ .name = "logic", .module = logic },
             },
         }),
     });
@@ -118,7 +120,8 @@ pub fn build(b: *std.Build) void {
     exe.root_module.addImport("raygui", raygui);
 
     exe.root_module.addImport("ui", ui);
-    exe.root_module.addImport("game", game);
+    exe.root_module.addImport("logic", logic);
+    exe.root_module.addImport("assets", assets);
 
     // This declares intent for the executable to be installed into the
     // install prefix when running `zig build` (i.e. when executing the default
