@@ -2,3 +2,5 @@
 zig-pkg/
 zig-out/
 *.o
+
+*to_ignore*
